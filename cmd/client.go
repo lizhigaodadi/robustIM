@@ -6,7 +6,6 @@ import (
 )
 
 func init() {
-
 }
 
 var clientCmd = &cobra.Command{

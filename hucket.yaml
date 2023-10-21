@@ -1,0 +1,7 @@
+etcd:
+  endpoints:
+    - 127.0.0.1:2379  #etcd ip port
+  timeout: 5
+test: fuck you
+
+
