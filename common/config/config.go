@@ -25,6 +25,8 @@ var (
 	state_grpc_addr          = "stateServer.grpc.address"
 	state_login_slot         = "stateServer.loginSlot"
 	redis_endpoints          = "redis.endpoints"
+
+	prpc_server_name = "prpc.serverName"
 )
 
 //Config File Reader
@@ -139,4 +141,8 @@ func GetGateWayGrpcAddr() string {
 
 func GetStateServerLoginSlot() int {
 	return viper.GetInt(state_login_slot)
+}
+
+func GetPrpcServerName() string {
+	return viper.GetString(prpc_server_name)
 }
