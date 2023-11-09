@@ -3,84 +3,35 @@ package discov
 import "im/logger"
 
 type Service struct {
-	ServiceName string      `json:"service_name"`
-	EndPoints   []*EndPoint `json:"end_points"`
-}
-
-func NewService(serviceName string, eps []*EndPoint) *Service {
-	s := &Service{
-		ServiceName: serviceName,
-		EndPoints:   eps,
-	}
-	return s
+	serviceName string
+	endPoints   []*EndPoint
 }
 
 type EndPoint struct {
-	ServerName string `json:"server_name"`
-	Ip         string `json:"ip"`
-	Port       uint32 `json:"port"`
-	Weight     uint32 `json:"weight"`
+	serverName string
+	Ip         string
+	Port       uint32
+	weight     uint32
 }
 
-func NewEndPoint(serverName string, ip string, port uint32) *EndPoint {
-	ep := &EndPoint{
-		ServerName: serverName,
-		Ip:         ip,
-		Port:       port,
-	}
-	return ep
-}
-
-func AddService(s *Service, other *Service) {
+func (s *Service) AddService(other *Service) {
 	/*确保这两个服务是一样的*/
-	if s.ServiceName != other.ServiceName {
-		logger.StdLog().Warnf("Add A Different To The %s Service", s.ServiceName)
+	if s.serviceName != other.serviceName {
+		logger.StdLog().Warnf("Add A Different To The %s Service", s.serviceName)
 		return
 	}
 
-	for _, ep := range other.EndPoints {
-		var isAdd bool = true
-		for _, e := range s.EndPoints {
+	for _, ep := range s.endPoints {
+		var isAdd bool = false
+		for _, e := range other.endPoints {
 			/*判断一下是否相等*/
-			if ep.EqualsAndUpdate(e) {
-				isAdd = false
-				break
-			}
-		}
-
-		if isAdd {
-			s.EndPoints = append(s.EndPoints, ep)
 		}
 	}
-
-}
-
-func RemoveService(s *Service, other *Service) {
-	if s.ServiceName != other.ServiceName {
-		logger.StdLog().Warnf("Remove A Different To The %s Service", s.ServiceName)
-		return
-	}
-
-	n := make([]*EndPoint, 0, len(s.EndPoints))
-
-	for _, ep := range s.EndPoints {
-		var isRemove bool = false
-		for _, e := range other.EndPoints {
-			if ep.Equals(e) {
-				isRemove = true
-				break
-			}
-		}
-		if !isRemove {
-			n = append(n, ep)
-		}
-	}
-	s.EndPoints = n
 
 }
 
 func (e *EndPoint) Equals(o *EndPoint) bool {
-	if e.Ip == o.Ip && e.Port == o.Port && e.ServerName == o.ServerName {
+	if e.Ip == o.Ip && e.Port == o.Port && e.serverName == o.serverName {
 		return true
 	}
 	return false
@@ -88,7 +39,7 @@ func (e *EndPoint) Equals(o *EndPoint) bool {
 
 func (e *EndPoint) EqualsAndUpdate(o *EndPoint) bool {
 	if e.Equals(o) {
-		e.Weight = o.Weight
+		e.weight = o.weight
 		return true
 	} else {
 		return false
