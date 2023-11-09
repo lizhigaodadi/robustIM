@@ -5,6 +5,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"im/common/config"
+	"log"
 	"sync"
 )
 
@@ -45,7 +46,7 @@ func (esd *EtcdServiceDiscovery) WatchService(prefix string, set, del func(key, 
 	}
 
 	/*Sign up for related watch events*/
-	esd.watcher(prefix, resp.Header.Revision+1, set, del)
+	go esd.watcher(prefix, resp.Header.Revision+1, set, del)
 	return nil
 }
 
@@ -54,6 +55,7 @@ func (s *EtcdServiceDiscovery) watcher(prefix string, rev int64, set, del func(k
 
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
+			log.Printf("There's a new event coming in\n")
 			switch ev.Type {
 			case mvccpb.PUT:
 				set(string(ev.Kv.Key), string(ev.Kv.Value))

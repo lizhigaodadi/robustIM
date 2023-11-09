@@ -76,37 +76,30 @@ func (e *Event) GetMessageBytes() float64 {
 	return e.messageBytes
 }
 
-func (e *Event) Host() {
-
-}
-
 func NewEvent(info *discovery.EndPointInfo, t EventType) *Event {
 	/*TODO:Extract relevant information*/
-	host, ok := info.Meta["host"]
-	if !ok {
+	host := info.Ip
+	p := info.Port
+
+	if len(host) == 0 || len(p) == 0 {
 		return nil
 	}
-	portStr, ok := info.Meta["port"]
-	if !ok {
-		return nil
-	}
-	port, err := strconv.ParseInt(portStr, 10, 32)
+
+	port, err := strconv.ParseInt(p, 10, 32)
 	if err != nil {
 		return nil
 	}
-	messageBytesStr, ok := info.Meta["messageBytes"]
+	mb, ok := info.Meta["messageBytes"]
 	if !ok {
 		return nil
 	}
-	messageBytes, err := strconv.ParseInt(messageBytesStr, 10, 64)
-	if err != nil {
-		return nil
-	}
-	connNumStr, ok := info.Meta["connNum"]
+	messageBytes := mb.(float64)
+
+	cn, ok := info.Meta["connNum"]
 	if !ok {
 		return nil
 	}
-	connNum, err := strconv.ParseInt(connNumStr, 10, 64)
+	connNum := cn.(float64)
 	if err != nil {
 		return nil
 	}
@@ -118,8 +111,8 @@ func NewEvent(info *discovery.EndPointInfo, t EventType) *Event {
 		host:         host,
 		port:         int(port),
 		t:            t,
-		messageBytes: float64(messageBytes),
-		connNum:      float64(connNum),
+		messageBytes: messageBytes,
+		connNum:      connNum,
 	}
 	return e
 }
