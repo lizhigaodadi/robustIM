@@ -19,5 +19,5 @@ func HashStr(key string) uint32 {
 }
 
 func HashWithSlot(hash uint32, slot int) uint32 {
-	return hash % slot
+	return hash % uint32(slot)
 }
