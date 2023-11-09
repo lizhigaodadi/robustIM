@@ -21,10 +21,33 @@ func (s *Service) AddService(other *Service) {
 		return
 	}
 
-	for _, ep := range s.endPoints {
-		var isAdd bool = false
-		for _, e := range other.endPoints {
+	for _, ep := range other.endPoints {
+		var isAdd bool = true
+		for _, e := range s.endPoints {
 			/*判断一下是否相等*/
+			if ep.Equals(e) {
+				isAdd = false
+				break
+			}
+		}
+
+		if isAdd {
+			s.endPoints = append(s.endPoints, ep)
+		}
+	}
+
+}
+
+func (s *Service) RemoveService(other *Service) {
+	if s.serviceName != other.serviceName {
+		logger.StdLog().Warnf("Remove A Different To The %s Service", s.serviceName)
+		return
+	}
+
+	for _, ep := range other.endPoints {
+		var isRemove bool = false
+		for _, e := range s.endPoints {
+
 		}
 	}
 
