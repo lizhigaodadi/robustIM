@@ -15,12 +15,22 @@ var (
 	ipconfig_port            = "ipConfig.port"
 	ipconfig_path            = "ipConfig.monitorPath"
 	gateway_host_port        = "gateWay.ipHost"
+	gateway_conn_limit       = "gateWay.connLimit"
+	gateway_queue_size       = "gateWay.queueSize"
+	gateway_epoll_count      = "gateWay.epollCount"
+	gateway_port             = "gateWay.port"
+	gateway_work_pool_count  = "gateWay.workPoolCount"
+	gateway_handler_count    = "gateWay.cmdHandlerCount"
+	gateway_grpc_addr        = "gateWay.grpc.address"
+	state_grpc_addr          = "stateServer.grpc.address"
+	state_login_slot         = "stateServer.loginSlot"
+	redis_endpoints          = "redis.endpoints"
 )
 
 //Config File Reader
 
-func Init() error {
-	viper.AddConfigPath("../../")
+func Init(path string) error {
+	viper.AddConfigPath(path)
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("hucket.yaml")
 
@@ -32,6 +42,8 @@ func Init() error {
 			return errors.New("Parse Config File Failed ")
 		}
 	}
+
+	log.Printf("Config Module Init Successfully\n")
 
 	return nil
 }
@@ -91,4 +103,40 @@ func GetGateWayPortStr() string {
 		return "0"
 	}
 	return port
+}
+
+func GetGateConnLimit() int32 {
+	return viper.GetInt32(gateway_conn_limit)
+}
+
+func GetGateWayQueueSize() int {
+	return viper.GetInt(gateway_queue_size)
+}
+
+func GetGateWayEpollCount() int {
+	return viper.GetInt(gateway_epoll_count)
+}
+
+func GetGateWayWorkPoolCount() int {
+	return viper.GetInt(gateway_work_pool_count)
+}
+
+func GetGateWayCmdHandlerCount() int {
+	return viper.GetInt(gateway_handler_count)
+}
+
+func GetStateServerGrpcAddr() string {
+	return "addr: " + viper.GetString(state_grpc_addr)
+}
+
+func GetRedisEndpoint() []string {
+	return viper.GetStringSlice(redis_endpoints)
+}
+
+func GetGateWayGrpcAddr() string {
+	return viper.GetString(gateway_grpc_addr)
+}
+
+func GetStateServerLoginSlot() int {
+	return viper.GetInt(state_login_slot)
 }
