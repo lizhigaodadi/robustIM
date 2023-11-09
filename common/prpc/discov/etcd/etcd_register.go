@@ -9,6 +9,7 @@ import (
 )
 
 type ERegister struct {
+	opt                Options
 	serverName         string
 	cli                *clientv3.Client
 	perceptionServices atomic.Value
@@ -24,27 +25,66 @@ type EService struct {
 }
 
 func (e *ERegister) GetPerceptionServices() map[string]*discov.Service {
+	val := e.perceptionServices.Load()
 
-	return nil
+	if val == nil {
+		return nil
+	}
+
+	m, ok := val.(map[string]*discov.Service)
+	if !ok {
+		return nil
+	}
+	return m
+}
+
+func (e *ERegister) SetPerceptionService(m map[string]*discov.Service) {
+	e.perceptionServices.Store(m)
 }
 
 func (e *ERegister) AddPerceptionServices(service *discov.Service) {
 	/*TODO:判断一下该字段是否已经被初始化了*/
-	val := e.perceptionServices.Load()
-	if val == nil {
-		/*开始进行初始化操作*/
+	ps := e.GetPerceptionServices()
+	if ps == nil {
 		m := make(map[string]*discov.Service)
-		e.perceptionServices.Store(m)
-		val = m
-	}
-
-	/*强制类型转换*/
-	ps, ok := val.(map[string]*discov.Service)
-	if !ok {
-		logger.StdLog().Warnf("The Perception Services Get Failed")
+		e.SetPerceptionService(m)
 		return
 	}
 
 	/*TODO:判断一下是否已经添加过相同的服务了*/
+	serviceName := service.ServiceName
+	s, ok := ps[serviceName]
+	if !ok { /*我们没有找到目标，直接添加即可*/
+		ps[serviceName] = service
+	} else { /*在原有的基础上进行更新*/
+		s.AddService(service)
 
+	}
+
+}
+
+func NewERegister(serverName string, eps []string, opt *Options) *ERegister {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:         eps,
+		AutoSyncInterval:  opt.AutoSyncInterval,
+		DialTimeout:       opt.dialTimeTimeOut,
+		DialKeepAliveTime: opt.dialKeepAliveTimeOut,
+	})
+	if err != nil {
+		logger.StdLog().Fatalf("Init Etcd Register Failed")
+		return nil
+	}
+
+	r := &ERegister{
+		opt:                *opt,
+		serverName:         serverName,
+		perceptionServices: atomic.Value{},
+		mu:                 sync.Mutex{},
+		monitorServices:    make(map[string]*EService),
+		registerChan:       make(chan *discov.Service),
+		unRegisterChan:     make(chan *discov.Service),
+		cli:                cli,
+	}
+
+	return r
 }
