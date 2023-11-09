@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func init() {
@@ -14,5 +13,5 @@ var clientCmd = &cobra.Command{
 }
 
 func ClientHandle(cmd *cobra.Command, args []string) {
-	viper.AddConfigPath()
+	/*TODO: Add a command parsing module*/
 }

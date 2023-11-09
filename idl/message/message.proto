@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+option go_package = "./;message";
+
+enum CmdType {
+    Login = 0;
+    Heartbeat = 1;
+    ReConn = 2;
+    ACK = 3;
+    UP = 4;
+    Push = 5;
+}
+
+message UpMsg {
+  uint64 ClientId = 1;
+  uint64 sessionId = 2;
+  bytes UpMsgBody = 3;
+}
+
+message PushMsg {
+    uint64 MsgId = 1;
+    uint64 SessionId = 2;
+    uint64 ClientId = 3;
+    bytes Content = 4;
+}
+
+message ACKMsg {
+    uint32 Code = 1;
+    string Msg = 2;
+    CmdType Type = 3;
+    uint64 ConnId = 4;
+    uint64 ClientId = 5; //Acker Id
+    uint64 SessionId = 6;
+    uint64 MsgId = 7;
+}
+
+message HeartbeatMsg {
+    bytes HeartbeatMsgBody = 1;
+}
+
+message ReConnMsg {
+    uint64 ConnId = 1;
+    uint64 ClientId = 2;
+    uint64 Did = 3;
+    bytes ReConnMsgBody = 4;
+}
+
+

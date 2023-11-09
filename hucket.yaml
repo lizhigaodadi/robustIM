@@ -4,4 +4,28 @@ etcd:
   timeout: 5
 test: fuck you
 
+ipConfig:
+  port: 6789
+  monitorPath: /ipConfig/dispatcher
+
+gateWay:
+  ipHost: 192.168.5.100:8081   #You can't write localhost or 127.0.0.1 here
+  connLimit: 1000000
+  queueSize: 10
+  epollCount: 3
+  port: 7979
+  workPoolCount: 12
+  grpc:
+    address: 127.0.0.1:8973
+  cmdHandlerCount: 3
+
+stateServer:
+  grpc:
+    address: 127.0.0.1:8972
+  loginSlot: 1024
+
+redis:
+  endpoints:
+    - 127.0.0.1:3306
+
 
