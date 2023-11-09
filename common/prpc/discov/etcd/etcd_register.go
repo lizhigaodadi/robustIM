@@ -46,4 +46,5 @@ func (e *ERegister) AddPerceptionServices(service *discov.Service) {
 	}
 
 	/*TODO:判断一下是否已经添加过相同的服务了*/
+
 }
