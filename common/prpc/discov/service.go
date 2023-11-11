@@ -7,6 +7,14 @@ type Service struct {
 	EndPoints   []*EndPoint `json:"end_points"`
 }
 
+func NewService(serviceName string, eps []*EndPoint) *Service {
+	s := &Service{
+		ServiceName: serviceName,
+		EndPoints:   eps,
+	}
+	return s
+}
+
 type EndPoint struct {
 	ServerName string `json:"server_name"`
 	Ip         string `json:"ip"`
@@ -14,7 +22,16 @@ type EndPoint struct {
 	Weight     uint32 `json:"weight"`
 }
 
-func (s *Service) AddService(other *Service) {
+func NewEndPoint(serverName string, ip string, port uint32) *EndPoint {
+	ep := &EndPoint{
+		ServerName: serverName,
+		Ip:         ip,
+		Port:       port,
+	}
+	return ep
+}
+
+func AddService(s *Service, other *Service) {
 	/*确保这两个服务是一样的*/
 	if s.ServiceName != other.ServiceName {
 		logger.StdLog().Warnf("Add A Different To The %s Service", s.ServiceName)
@@ -25,7 +42,7 @@ func (s *Service) AddService(other *Service) {
 		var isAdd bool = true
 		for _, e := range s.EndPoints {
 			/*判断一下是否相等*/
-			if ep.Equals(e) {
+			if ep.EqualsAndUpdate(e) {
 				isAdd = false
 				break
 			}
@@ -38,8 +55,7 @@ func (s *Service) AddService(other *Service) {
 
 }
 
-func (s *Service) RemoveService(other *Service) {
-
+func RemoveService(s *Service, other *Service) {
 	if s.ServiceName != other.ServiceName {
 		logger.StdLog().Warnf("Remove A Different To The %s Service", s.ServiceName)
 		return
