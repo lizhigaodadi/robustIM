@@ -30,5 +30,7 @@ redis:
 
 prpc:
   serverName: firstServer
+  disov:
+    name: etcd   #后续将会支持Zookeeper等其他注册机构
 
 
