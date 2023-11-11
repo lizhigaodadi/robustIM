@@ -20,13 +20,23 @@ import (
 var eRegister *ERegister
 var once sync.Once
 
+func GetEtcdDiscoveryInstance() discov.Discovery {
+	return eRegister
+}
+func IsEtcdDiscoveryInit() bool {
+	return eRegister != nil
+}
+
 type ERegister struct {
 	opt                Options
 	serverName         string
 	cli                *clientv3.Client
+	rwForPsMu          sync.RWMutex
 	perceptionServices atomic.Value
-	mu                 sync.Mutex
-	monitorServices    map[string]*EService
+	mu                 sync.Mutex           /*控制操作monitorServices的锁*/
+	monitorServices    map[string]*EService /*2*/
+	notifyMu           sync.RWMutex
+	notifyFunc         []func()
 	registerChan       chan *discov.Service
 	unRegisterChan     chan *discov.Service
 }
@@ -39,17 +49,11 @@ type EService struct {
 	keepAliveChan <-chan *clientv3.LeaseKeepAliveResponse
 }
 
-func RunMainRegister(ctx context.Context, service *discov.Service) {
+func RunMainRegister(ctx context.Context, endPoints []string) {
 
 	once.Do(func() {
-		if len(service.EndPoints) == 0 {
-			logger.Fatalf("Service必须有至少一个EndPoint存在，否则初始化Register模块失败")
-			return
-		}
-		ep := service.EndPoints[0]
-
-		if ep == nil {
-			log.Fatalf("EndPoint 不能为空！！！！！")
+		if len(endPoints) == 0 {
+			log.Fatalf("Etcd EndPoint 不能为空")
 		}
 		/*开始进行初始化Register工作*/
 		serverName := config.GetPrpcServerName()
@@ -64,9 +68,70 @@ func RunMainRegister(ctx context.Context, service *discov.Service) {
 			logger.Infof("初始化一个PRPC注册服务，你应该先设置服务器的别名，我们为你随机生成了一个别名：%s", serverName)
 		}
 
-		eRegister = NewERegister(serverName, discov.EndPointsToStrings(discov.NewEndPoints(ep)), NewOptions())
+		eRegister = NewERegister(serverName, endPoints, NewOptions())
+
+		go eRegister.handleOperatorEvent(ctx)
 
 	})
+}
+
+func (e *ERegister) handleOperatorEvent(ctx context.Context) {
+	/*TODO:监听两个事件channel，当有事件发生时，判断是注册事件，还是注销事件*/
+	go func() {
+		for s := range e.registerChan {
+			logger.Infof("收到注册事件：%v", s)
+			e.RegisterMonitorService(ctx, s)
+		}
+	}()
+
+	for s := range e.unRegisterChan {
+		logger.Infof("收到注销事件：%v", s)
+		e.UnRegisterMonitorService(ctx, s)
+	}
+}
+
+func (es *ERegister) RegisterMonitorService(ctx context.Context, service *discov.Service) {
+	/*空指针检查*/
+	if service == nil {
+		logger.Fatalf("service 不能为空")
+		return
+	}
+	/*判断一下这是新增加还是更新操作*/
+	_, ok := es.monitorServices[service.ServiceName]
+	if ok {
+		/*没必要了*/
+		return
+	}
+	/*开始进行新建*/
+	prpcServiceKey := discov.WithPrpcPrefix(es.serverName, service.ServiceName)
+
+	eService := NewEService(ctx, prpcServiceKey, es.cli, service.ServiceName, service.EndPoints, es.opt.LeaseTTL)
+	/*加入到我们注册的map中去*/
+
+	es.monitorServices[service.ServiceName] = eService
+
+}
+
+func (es *ERegister) UnRegisterMonitorService(ctx context.Context, service *discov.Service) {
+	/*TODO:删除并停止相关的ETCD租约*/
+	es.rwForPsMu.Lock()
+	defer es.rwForPsMu.Unlock()
+	/*首先判断一下是否有相关的Service在里面*/
+	eService, ok := es.monitorServices[service.ServiceName]
+	if !ok {
+		logger.Warnf("没有找到相关的Service：%s,因此这次解除租约没有必要，请检查代码", service.ServiceName)
+		return
+	}
+
+	/*删除租约*/
+	id := eService.leaseId
+	_, err := es.cli.Revoke(ctx, id)
+	if err != nil {
+		logger.Fatalf("删除租约失败：%v,请检查Etcd是否在正常工作", err)
+	}
+	/*将相关的Service进行删除*/
+	delete(es.monitorServices, service.ServiceName)
+
 }
 
 func (es *EService) PutKeyWithLease(ctx context.Context, key string, val string, leaseId clientv3.LeaseID) {
@@ -97,6 +162,8 @@ func (es *EService) CheckKeepAliveChannel() {
 	logger.Infof("Etcd Service Connection Lost ")
 }
 
+/*TODO(重要解释):NewEService函数会自动的将该key生成合约并发布到Etcd中去*/
+
 func NewEService(ctx context.Context, serviceKey string, cli *clientv3.Client, serviceName string, eps []*discov.EndPoint, leaseTTL int64) *EService {
 	resp, err := cli.Grant(ctx, leaseTTL)
 	if err != nil {
@@ -126,6 +193,8 @@ func NewEService(ctx context.Context, serviceKey string, cli *clientv3.Client, s
 }
 
 func (e *ERegister) GetPerceptionServices() map[string]*discov.Service {
+	e.rwForPsMu.RLock()
+	defer e.rwForPsMu.RUnlock()
 	val := e.perceptionServices.Load()
 
 	if val == nil {
@@ -144,6 +213,8 @@ func (e *ERegister) SetPerceptionService(m map[string]*discov.Service) {
 }
 
 func (e *ERegister) AddPerceptionServices(service *discov.Service) {
+	e.rwForPsMu.Lock()
+	defer e.rwForPsMu.Unlock()
 	/*TODO:判断一下该字段是否已经被初始化了*/
 	ps := e.GetPerceptionServices()
 	if ps == nil {
@@ -182,6 +253,8 @@ func NewERegister(serverName string, eps []string, opt *Options) *ERegister {
 		perceptionServices: atomic.Value{},
 		mu:                 sync.Mutex{},
 		monitorServices:    make(map[string]*EService),
+		notifyMu:           sync.RWMutex{},
+		notifyFunc:         make([]func(), 0),
 		registerChan:       make(chan *discov.Service),
 		unRegisterChan:     make(chan *discov.Service),
 		cli:                cli,
@@ -256,6 +329,7 @@ func (e *ERegister) UnRegister(service *discov.Service) {
 	}
 }
 
+/*TODO:！！该函数会堵塞住，请异步执行 */
 func (e *ERegister) WatchService(ctx context.Context, prefixKey string) {
 	watchChan := e.cli.Watch(ctx, prefixKey, clientv3.WithPrefix())
 
@@ -292,10 +366,18 @@ func (e *ERegister) UnRegisterService(ctx context.Context, service *discov.Servi
 }
 
 func (e *ERegister) AddNotify(f func()) {
-
+	e.notifyMu.Lock()
+	defer e.notifyMu.Unlock()
+	e.notifyFunc = append(e.notifyFunc, f)
 }
 
 func (e *ERegister) NotifyListeners() {
+	var notifyFuncClone []func()
+	e.notifyMu.RLock() /*先将需要执行的方法进行获取*/
+	for _, f := range e.notifyFunc {
+		notifyFuncClone = append(notifyFuncClone, f)
+	}
+	e.notifyMu.RUnlock()
 
 }
 
@@ -304,6 +386,18 @@ func (e *ERegister) Name() string {
 }
 
 func (e *ERegister) GetService(ctx context.Context, serviceName string) *discov.Service {
+	/*获取其他服务器提供的服务资源*/
+	services := e.GetPerceptionServices()
+	if services == nil {
+		logger.Warnf("在该注册发现机构中未发现目标service：%s", serviceName)
+		return nil
+	}
 
-	return nil
+	s, ok := services[serviceName]
+	if !ok {
+		logger.Warnf("在该注册发现机构中未发现目标service：%s", serviceName)
+		return nil
+	}
+
+	return s
 }

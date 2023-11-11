@@ -25,8 +25,8 @@ var (
 	state_grpc_addr          = "stateServer.grpc.address"
 	state_login_slot         = "stateServer.loginSlot"
 	redis_endpoints          = "redis.endpoints"
-
-	prpc_server_name = "prpc.serverName"
+	prpc_discov_name         = "etcd"
+	prpc_server_name         = "prpc.serverName"
 )
 
 //Config File Reader
@@ -145,4 +145,10 @@ func GetStateServerLoginSlot() int {
 
 func GetPrpcServerName() string {
 	return viper.GetString(prpc_server_name)
+}
+
+/*获取当前是选择了什么作为注册机构*/
+
+func GetPrpcDiscovName() string {
+	return viper.GetString(prpc_discov_name)
 }
