@@ -24,7 +24,7 @@ func NewMockServer() *MockServer {
 	register, err := discovery.NewServiceRegister(&ctx, utils.GenerateIpConfigPath(), discovery2.EndPointInfo{
 		Ip:   config.GetGateWayHost(),
 		Port: config.GetGateWayPortStr(),
-		Meta: make(map[string]string),
+		Meta: make(map[string]interface{}),
 	}, 10)
 	if err != nil {
 		return nil
