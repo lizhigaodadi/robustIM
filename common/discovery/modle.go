@@ -3,9 +3,9 @@ package discovery
 import "encoding/json"
 
 type EndPointInfo struct {
-	Ip   string                 `json:"Key"`
-	Port string                 `json:"Port"`
-	Meta map[string]interface{} `json:"Meta"`
+	Ip   string            `json:"Key"`
+	Port string            `json:"Port"`
+	Meta map[string]string `json:"Meta"`
 }
 
 func (e *EndPointInfo) Marshal() []byte {

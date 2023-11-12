@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	Sm *StatManager
+	Ms *StatManager
 )
 
 type StatManager struct {
@@ -37,14 +37,11 @@ func (sm *StatManager) Add(event *data.Event) {
 	}
 	sm.endPointMarker.Store(event.GetHostPort(), NewSateWindow(DefaultWindowSize, event.GetHost(), int(event.GetPort()), s))
 	sm.connCount++
-	log.Printf("StatManager Add New Node HostPort: %s\n", event.GetHostPort())
 }
 
 func (sm *StatManager) Del(event *data.Event) {
 	sm.endPointMarker.Delete(event.GetHostPort())
 	sm.connCount--
-	log.Printf("StatManager Del an Old Node HostPort: %s\n", event.GetHostPort())
-
 }
 
 func (sm *StatManager) Update(event *data.Event) {
@@ -58,7 +55,6 @@ func (sm *StatManager) Update(event *data.Event) {
 		ConnectNum:   event.GetConnNum(),
 	}
 	stateWindow.(*StateWindow).PushStat(s)
-	log.Printf("StatManager Update an Old Node HostPort: %s\n", event.GetHostPort())
 
 }
 
@@ -109,6 +105,7 @@ func (sm *StatManager) RunListening() {
 			}
 		} else { /*UnKnown Err*/
 			log.Printf("Invalid EventType For Ip:%s\n", event.GetHostPort())
+
 		}
 	}
 

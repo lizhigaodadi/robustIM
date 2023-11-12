@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/gin-gonic/gin"
 	"im/common/response"
+	"im/ipconfig"
 	"im/ipconfig/pkg/domain"
 	"net"
 	"net/http"
@@ -10,13 +11,13 @@ import (
 )
 
 func IpsGetHandler(c *gin.Context) {
-	iplist := domain.Sm.GetIpList()
+	iplist := ipconfig.Ms.GetIps()
 
 	var data []*domain.EndPoint
 
 	for _, ip := range iplist {
 		tmp := &domain.EndPoint{}
-		host, port, err := net.SplitHostPort(ip.GetHostStr())
+		host, port, err := net.SplitHostPort(ip)
 		if err != nil {
 			c.JSON(http.StatusServiceUnavailable,
 				response.Response().Err().End())

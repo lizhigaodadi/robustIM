@@ -12,7 +12,7 @@ func GetTest() string {
 }
 
 func TestConfig(t *testing.T) {
-	err := Init("../../")
+	err := Init()
 	assert.Equal(t, err, nil)
 
 	test := GetTest()

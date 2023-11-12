@@ -5,7 +5,6 @@ import (
 	"fmt"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"im/common/config"
-	"im/common/utils"
 	"sync"
 )
 
@@ -74,8 +73,6 @@ func (esr *EtcdServiceRegister) PutKeyWithLease(lease int64) error {
 
 func (esr *EtcdServiceRegister) UpdateKey(info *EndPointInfo) {
 	/*TODO: Modify the key value of the relevant lease*/
-	val := info.Marshal()
-	esr.cli.Put(*esr.ctx, utils.GenerateIpConfigPath(), string(val), clientv3.WithLease(esr.lease))
 }
 
 func (esr *EtcdServiceRegister) ListenToLeaseKeepalive() {

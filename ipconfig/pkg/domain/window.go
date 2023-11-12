@@ -31,26 +31,23 @@ func NewSateWindow(windowSize int, host string, port int, stat *data.Stat) *Stat
 
 	sw.StatQueue = append(sw.StatQueue, stat)
 	sw.idx++
-
-	go func() {
-		for stat := range sw.StateChan {
-			/*Determine if it needs to be turned off*/
-			if stat.IsEnd() {
-				break
-			}
-
-			sw.sumStat.Add(stat)
-			sw.sumStat.Sub(sw.NowStat())
-			sw.StatQueue[sw.idx%sw.queueSize] = stat
-			sw.idx++
-		}
-	}()
-
 	return sw
 }
 
 func (sw *StateWindow) NowStat() *data.Stat {
 	return sw.StatQueue[sw.idx%sw.queueSize]
+}
+
+func (sw *StateWindow) RunListening() error {
+	/*TODO:Listen for any incidents in the pipeline*/
+
+	for newStat := range sw.StateChan {
+		sw.sumStat.Add(newStat)
+		sw.sumStat.Sub(sw.NowStat())
+		sw.idx++
+	}
+
+	return nil
 }
 
 func (sw *StateWindow) PushStat(stat *data.Stat) {
