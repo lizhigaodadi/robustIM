@@ -71,6 +71,10 @@ func (esr *EtcdServiceRegister) PutKeyWithLease(lease int64) error {
 	return err
 }
 
+func (esr *EtcdServiceRegister) UpdateKey(info *EndPointInfo) {
+	/*TODO: Modify the key value of the relevant lease*/
+}
+
 func (esr *EtcdServiceRegister) ListenToLeaseKeepalive() {
 	for e := range esr.keepaliveChan {
 		fmt.Printf("Lease Keepalive Event Happend Reversion: %d,LeaseId: %d\n", e.Revision, e.ID)

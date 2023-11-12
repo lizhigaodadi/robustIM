@@ -12,7 +12,7 @@ func GetTest() string {
 }
 
 func TestConfig(t *testing.T) {
-	err := Init("../../")
+	err := Init()
 	assert.Equal(t, err, nil)
 
 	test := GetTest()
@@ -25,6 +25,14 @@ func TestConfig(t *testing.T) {
 	}
 
 	timeout := GetEtcdTimeOutDialTimeForDiscovery()
-	fmt.Printf("timeout: %v", timeout)
+	fmt.Printf("timeout: %v\n", timeout)
+
+	ipConfigPort := GetIpConfigPort()
+	assert.Equal(t, ipConfigPort, ":6789")
+	fmt.Printf("ipconfigPort: %v\n", ipConfigPort)
+
+	ipConfigPath := GetIpConfigPath()
+	assert.Equal(t, ipConfigPath, "/ipConfig/dispatcher")
+	fmt.Printf("ipconfigPort: %v\n", ipConfigPath)
 
 }

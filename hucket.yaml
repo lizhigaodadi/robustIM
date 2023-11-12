@@ -4,4 +4,11 @@ etcd:
   timeout: 5
 test: fuck you
 
+ipConfig:
+  port: 6789
+  monitorPath: /ipConfig/dispatcher
+
+gateWay:
+  ipHost: 192.168.5.100:8081   #You can't write localhost or 127.0.0.1 here
+
 

@@ -3,8 +3,8 @@ package discovery
 import "encoding/json"
 
 type EndPointInfo struct {
-	Key  string            `json:"Key"`
-	Val  string            `json:"Val"`
+	Ip   string            `json:"Key"`
+	Port string            `json:"Port"`
 	Meta map[string]string `json:"Meta"`
 }
 
