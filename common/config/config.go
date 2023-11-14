@@ -25,7 +25,7 @@ var (
 	state_grpc_addr          = "stateServer.grpc.address"
 	state_login_slot         = "stateServer.loginSlot"
 	redis_endpoints          = "redis.endpoints"
-	prpc_discov_name         = "etcd"
+	prpc_discov_name         = "prpc.discov.name"
 	prpc_server_name         = "prpc.serverName"
 )
 
