@@ -27,6 +27,9 @@ var (
 	redis_endpoints          = "redis.endpoints"
 	prpc_discov_name         = "prpc.discov.name"
 	prpc_server_name         = "prpc.serverName"
+	prpc_trace_url           = "prpc.trace.url"
+	prpc_trace_sampler       = "prpc.trace.sampler"
+	prpc_trace_service_name  = "prpc.trace.serviceName"
 )
 
 //Config File Reader
@@ -151,4 +154,16 @@ func GetPrpcServerName() string {
 
 func GetPrpcDiscovName() string {
 	return viper.GetString(prpc_discov_name)
+}
+
+func GetPrpcTraceUrl() string {
+	return viper.GetString(prpc_trace_url)
+}
+
+func GetPrpcTraceSampler() float64 {
+	return viper.GetFloat64(prpc_trace_sampler)
+}
+
+func GetPrpcTraceServiceName() string {
+	return viper.GetString(prpc_trace_service_name)
 }

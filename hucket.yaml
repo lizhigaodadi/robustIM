@@ -32,5 +32,9 @@ prpc:
   serverName: firstServer
   discov:
     name: etcd   #后续将会支持Zookeeper等其他注册机构
+  trace:
+    url: http://192.168.5.38:16686/api/traces
+    sampler: 1.0
+    serviceName: robust
 
 
