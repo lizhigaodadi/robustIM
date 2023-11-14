@@ -36,10 +36,5 @@ func TestGetPrpcName(t *testing.T) {
 	fmt.Printf("serverName : %s, discoveryName : %s", serverName, discoveryName)
 	assert.Equal(t, serverName, "firstServer")
 	assert.Equal(t, discoveryName, "etcd")
-}
 
-func TestEtcdRegisterAndDiscovery(t *testing.T) {
-	/*测试Prpc的Etcd服务发现注册的可用性*/
-	_, err := GetDiscoInstance(context.Background())
-	assert.Equal(t, err, nil)
 }

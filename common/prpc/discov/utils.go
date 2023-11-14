@@ -10,8 +10,11 @@ var (
 )
 
 func WithPrpcPrefix(serverName string, serviceName string) string {
+	return prpcPrefix + "/" + serverName + "/" + serviceName
+}
 
-	return prpcPrefix + "/" + serviceName + "/" + serviceName
+func GetPrpcPrefix() string {
+	return prpcPrefix
 }
 
 func NewEndPoints(eps ...*EndPoint) []*EndPoint {

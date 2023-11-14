@@ -31,7 +31,6 @@ type ERegister struct {
 	opt                Options
 	serverName         string
 	cli                *clientv3.Client
-	rwForPsMu          sync.RWMutex
 	perceptionServices atomic.Value
 	mu                 sync.Mutex           /*控制操作monitorServices的锁*/
 	monitorServices    map[string]*EService /*2*/
@@ -71,6 +70,7 @@ func RunMainRegister(ctx context.Context, endPoints []string) {
 		eRegister = NewERegister(serverName, endPoints, NewOptions())
 
 		go eRegister.handleOperatorEvent(ctx)
+		go eRegister.WatchService(ctx, discov.GetPrpcPrefix())
 
 	})
 }
@@ -113,9 +113,9 @@ func (es *ERegister) RegisterMonitorService(ctx context.Context, service *discov
 }
 
 func (es *ERegister) UnRegisterMonitorService(ctx context.Context, service *discov.Service) {
+	es.mu.Lock()
+	defer es.mu.Unlock()
 	/*TODO:删除并停止相关的ETCD租约*/
-	es.rwForPsMu.Lock()
-	defer es.rwForPsMu.Unlock()
 	/*首先判断一下是否有相关的Service在里面*/
 	eService, ok := es.monitorServices[service.ServiceName]
 	if !ok {
@@ -159,7 +159,7 @@ func (es *EService) CheckKeepAliveChannel() {
 		logger.Infof("Receive Etcd KeepAlive Package: %v", resp)
 	}
 
-	logger.Infof("Etcd Service Connection Lost ")
+	logger.Warnf("Etcd Service Connection Lost ")
 }
 
 /*TODO(重要解释):NewEService函数会自动的将该key生成合约并发布到Etcd中去*/
@@ -188,17 +188,16 @@ func NewEService(ctx context.Context, serviceKey string, cli *clientv3.Client, s
 
 	/*TODO 发布当前这个服务到到注册机构中*/
 	es.PutKeyWithLease(ctx, serviceKey, string(val), es.leaseId)
-
 	return es
 }
 
 func (e *ERegister) GetPerceptionServices() map[string]*discov.Service {
-	e.rwForPsMu.RLock()
-	defer e.rwForPsMu.RUnlock()
 	val := e.perceptionServices.Load()
 
 	if val == nil {
-		return nil
+		/*TODO:  在这里我们应该自己去新建一个map来存储进去*/
+		val = make(map[string]*discov.Service)
+		e.SetPerceptionService(val.(map[string]*discov.Service))
 	}
 
 	m, ok := val.(map[string]*discov.Service)
@@ -213,8 +212,6 @@ func (e *ERegister) SetPerceptionService(m map[string]*discov.Service) {
 }
 
 func (e *ERegister) AddPerceptionServices(service *discov.Service) {
-	e.rwForPsMu.Lock()
-	defer e.rwForPsMu.Unlock()
 	/*TODO:判断一下该字段是否已经被初始化了*/
 	ps := e.GetPerceptionServices()
 	if ps == nil {
@@ -282,24 +279,24 @@ func (e *ERegister) PushNewService(ctx context.Context, service *discov.Service)
 	e.monitorServices[service.ServiceName] = es
 }
 
-func (e *ERegister) RunAsync() {
-	go e.RunSync()
-}
+//func (e *ERegister) RunAsync() {
+//	go e.RunSync()
+//}
+//
+//func (e *ERegister) RunSync() {
+//	go func() {
+//		for s := range e.registerChan {
+//			e.Register(s)
+//		}
+//	}()
+//
+//	for s := range e.unRegisterChan {
+//		e.UnRegister(s)
+//	}
+//
+//}
 
-func (e *ERegister) RunSync() {
-	go func() {
-		for s := range e.registerChan {
-			e.Register(s)
-		}
-	}()
-
-	for s := range e.unRegisterChan {
-		e.UnRegister(s)
-	}
-
-}
-
-func (e *ERegister) Register(service *discov.Service) {
+func (e *ERegister) Register(ctx context.Context, service *discov.Service) {
 	/*TODO:将这个加入到我们管理的Service中*/
 	ps := e.GetPerceptionServices()
 	serviceName := service.ServiceName
@@ -308,14 +305,16 @@ func (e *ERegister) Register(service *discov.Service) {
 
 	if !ok { /*发现这是第一次添加该状态*/
 		ps[serviceName] = service
+		e.SetPerceptionService(ps)
 		return
 	}
 
 	discov.AddService(s, service)
+	e.SetPerceptionService(ps)
 
 }
 
-func (e *ERegister) UnRegister(service *discov.Service) {
+func (e *ERegister) UnRegister(ctx context.Context, service *discov.Service) {
 	ps := e.GetPerceptionServices()
 	if ps == nil {
 		logger.StdLog().Warnf("PercetptionServices in %s Not Init", e.Name())
@@ -327,6 +326,7 @@ func (e *ERegister) UnRegister(service *discov.Service) {
 		/*We Found The Service*/
 		discov.RemoveService(s, service)
 	}
+	e.SetPerceptionService(ps)
 }
 
 /*TODO:！！该函数会堵塞住，请异步执行 */
@@ -336,6 +336,7 @@ func (e *ERegister) WatchService(ctx context.Context, prefixKey string) {
 	/*开始监听变化事件*/
 	for resp := range watchChan {
 		for _, event := range resp.Events {
+			logger.Infof("发现了新的服务事件出现")
 			/*TODO:开始进行反序列化*/
 			service := &discov.Service{}
 			err := json.Unmarshal(event.Kv.Value, service)
@@ -345,12 +346,12 @@ func (e *ERegister) WatchService(ctx context.Context, prefixKey string) {
 			}
 			switch event.Type {
 			case mvccpb.PUT:
-				{
-					e.RegisterService(ctx, service)
+				{ /*TODO:这个改为加入到观测服务中去*/
+					e.Register(ctx, service)
 				}
 			case mvccpb.DELETE:
 				{
-					e.UnRegisterService(ctx, service)
+					e.UnRegister(ctx, service)
 				}
 			}
 		}
@@ -400,4 +401,43 @@ func (e *ERegister) GetService(ctx context.Context, serviceName string) *discov.
 	}
 
 	return s
+}
+
+func (e *ERegister) ShowServiceMessage(ctx context.Context) string {
+	ps := e.GetPerceptionServices()
+	ret := fmt.Sprintf("{\nServerName: %s\n", e.serverName)
+	ret += fmt.Sprintf("PerceptionService: {\n")
+	for _, s := range ps {
+		ret = fmt.Sprintf("{\nService: %s\n", s.ServiceName)
+		ret += fmt.Sprintf("Service: {\n")
+		for _, ep := range s.EndPoints {
+			ret += fmt.Sprintf("EndPoint: {\n")
+			ret += fmt.Sprintf("Ip: %s\n", ep.Ip)
+			ret += fmt.Sprintf("Port: %d\n", ep.Port)
+			ret += fmt.Sprintf("Weight: %d\n", ep.Weight)
+			ret += fmt.Sprintf("}\n")
+		}
+		ret += fmt.Sprintf("}\n")
+	}
+	ret += fmt.Sprintf("}\n")
+
+	ms := e.monitorServices
+	ret += fmt.Sprintf("MonitorServices{\n")
+	for _, s := range ms {
+		ret += fmt.Sprintf("{\nService: %s\n", s.ServiceName)
+		ret += fmt.Sprintf("Service: {\n")
+		for _, ep := range s.EndPoints {
+			ret += fmt.Sprintf("EndPoint: {\n")
+			ret += fmt.Sprintf("Ip: %s\n", ep.Ip)
+			ret += fmt.Sprintf("Port: %d\n", ep.Port)
+			ret += fmt.Sprintf("Weight: %d\n", ep.Weight)
+			ret += fmt.Sprintf("}\n")
+		}
+		ret += fmt.Sprintf("}\n")
+	}
+	ret += fmt.Sprintf("}\n")
+
+	ret += fmt.Sprintf("}\n")
+
+	return ret
 }
